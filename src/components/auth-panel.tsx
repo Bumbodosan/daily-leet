@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 
 export function AuthPanel({
   error,
@@ -17,7 +16,6 @@ export function AuthPanel({
   onSubmit: (email: string) => Promise<void>;
   onRefresh: () => void;
 }) {
-  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
 
@@ -44,7 +42,7 @@ export function AuthPanel({
           </ThemedText>
         </View>
 
-        <View style={[styles.form, { backgroundColor: theme.text }]}>
+        <View style={styles.form}>
           <TextInput
             value={email}
             onChangeText={setEmail}
@@ -52,8 +50,8 @@ export function AuthPanel({
             autoCorrect={false}
             keyboardType="email-address"
             placeholder="you@example.com"
-            placeholderTextColor="#8a8a84"
-            style={[styles.input, { color: theme.background }]}
+            placeholderTextColor="#b8b8b0"
+            style={styles.input}
           />
           <Pressable
             disabled={!email || isSending}
@@ -107,12 +105,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: Spacing.three,
     gap: Spacing.three,
+    backgroundColor: '#111111',
   },
   input: {
     minHeight: 52,
     borderRadius: 8,
     paddingHorizontal: Spacing.three,
     backgroundColor: '#2f2f2d',
+    color: '#f7f7f4',
     fontSize: 16,
   },
   button: {

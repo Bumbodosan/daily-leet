@@ -66,7 +66,10 @@ export default function FriendProfileScreen() {
       contentContainerStyle={styles.contentContainer}>
       <View style={styles.container}>
         {error || !user ? (
-          <ThemedText type="small" selectable style={styles.errorText}>
+          <ThemedText
+            type="small"
+            selectable
+            style={{ color: theme.background === '#000000' ? '#ffb199' : '#9a3f28' }}>
             {error || 'User not found'}
           </ThemedText>
         ) : (
@@ -187,8 +190,5 @@ const styles = StyleSheet.create({
     aspectRatio: 3 / 4,
     borderRadius: 8,
     backgroundColor: '#111111',
-  },
-  errorText: {
-    color: '#b35b3e',
   },
 });

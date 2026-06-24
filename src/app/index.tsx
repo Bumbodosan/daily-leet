@@ -170,7 +170,7 @@ export default function FeedScreen() {
         {latestImages.length === 0 ? (
           <View style={styles.empty}>
             <ThemedText style={styles.emptyTime}>13:37</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
+            <ThemedText type="small" style={styles.emptyText}>
               no friend photos yet
             </ThemedText>
           </View>
@@ -259,6 +259,9 @@ const styles = StyleSheet.create({
     lineHeight: 76,
     fontWeight: '700',
     letterSpacing: 0,
+  },
+  emptyText: {
+    color: '#d8d8d1',
   },
   post: {
     gap: Spacing.two,
