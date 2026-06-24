@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import {
   clearSession,
@@ -7,7 +8,17 @@ import {
   requestMagicLink,
   requireUser,
 } from './auth.js';
-import { db, deleteEntry, getEntry, listEntries, upsertEntry } from './db.js';
+import {
+  createFollow,
+  db,
+  deleteEntry,
+  findFollow,
+  findUserByEmail,
+  getEntry,
+  listEntries,
+  listFriendRelationships,
+  upsertEntry,
+} from './db.js';
 import { getImageUploadLimits, listImagesForUser, storeUploadedImage } from './images.js';
 
 const host = process.env.HOST ?? '0.0.0.0';
@@ -15,6 +26,27 @@ const port = Number(process.env.PORT ?? 3000);
 
 const app = Fastify({
   logger: true,
+});
+
+function getAllowedCorsOrigins() {
+  if (process.env.CORS_ORIGIN) {
+    return new Set(process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim()));
+  }
+
+  return new Set(['http://localhost:8081', 'http://127.0.0.1:8081']);
+}
+
+await app.register(cors, {
+  credentials: true,
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const allowedOrigins = getAllowedCorsOrigins();
+    callback(null, allowedOrigins.has(origin));
+  },
 });
 
 await app.register(multipart, {
@@ -89,6 +121,59 @@ app.post('/auth/logout', async (request, reply) => {
 
   return {
     ok: true,
+  };
+});
+
+app.get('/friends', { preHandler: requireUser }, async (request) => {
+  return listFriendRelationships(request.user.id);
+});
+
+app.post('/friends/requests', { preHandler: requireUser }, async (request, reply) => {
+  const email = request.body?.email;
+
+  if (typeof email !== 'string') {
+    return reply.code(400).send({
+      error: 'Expected JSON body with email field',
+    });
+  }
+
+  const targetUser = findUserByEmail(email.trim().toLowerCase());
+  if (!targetUser) {
+    return reply.code(404).send({
+      error: 'User not found',
+    });
+  }
+
+  if (targetUser.id === request.user.id) {
+    return reply.code(400).send({
+      error: 'You cannot add yourself',
+    });
+  }
+
+  createFollow(request.user.id, targetUser.id);
+  const reciprocalFollow = findFollow(targetUser.id, request.user.id);
+
+  return reply.code(reciprocalFollow ? 200 : 201).send({
+    relationship: reciprocalFollow ? 'friends' : 'request_sent',
+    user: targetUser,
+    friends: listFriendRelationships(request.user.id),
+  });
+});
+
+app.post('/friends/requests/:userId/accept', { preHandler: requireUser }, async (request, reply) => {
+  const requesterFollow = findFollow(request.params.userId, request.user.id);
+
+  if (!requesterFollow) {
+    return reply.code(404).send({
+      error: 'Friend request not found',
+    });
+  }
+
+  createFollow(request.user.id, request.params.userId);
+
+  return {
+    relationship: 'friends',
+    friends: listFriendRelationships(request.user.id),
   };
 });
 

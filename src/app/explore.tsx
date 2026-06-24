@@ -1,127 +1,174 @@
-import { Image } from 'expo-image';
-import { SymbolView } from 'expo-symbols';
-import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ExternalLink } from '@/components/external-link';
+import {
+  ApiError,
+  FriendRelationships,
+  getFriendRelationships,
+  getImages,
+  getMe,
+  ImageRecord,
+  User,
+} from '@/lib/api';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { WebBadge } from '@/components/web-badge';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export default function TabTwoScreen() {
-  const safeAreaInsets = useSafeAreaInsets();
-  const insets = {
-    ...safeAreaInsets,
-    bottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
-  };
+const emptyRelationships: FriendRelationships = {
+  incomingRequests: [],
+  outgoingRequests: [],
+  friends: [],
+};
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof ApiError || error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Request failed';
+}
+
+export default function ProfileScreen() {
   const theme = useTheme();
+  const safeAreaInsets = useSafeAreaInsets();
+  const [me, setMe] = useState<User | null>(null);
+  const [relationships, setRelationships] = useState(emptyRelationships);
+  const [images, setImages] = useState<ImageRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const refresh = useCallback(async () => {
+    setError('');
+
+    try {
+      const [{ user }, friendRelationships, imageRecords] = await Promise.all([
+        getMe(),
+        getFriendRelationships(),
+        getImages(),
+      ]);
+      setMe(user);
+      setRelationships(friendRelationships);
+      setImages(imageRecords.images);
+    } catch (caughtError) {
+      if (caughtError instanceof ApiError && caughtError.status === 401) {
+        setMe(null);
+        setRelationships(emptyRelationships);
+        setImages([]);
+        return;
+      }
+
+      setError(getErrorMessage(caughtError));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const contentPlatformStyle = Platform.select({
     android: {
-      paddingTop: insets.top,
-      paddingLeft: insets.left,
-      paddingRight: insets.right,
-      paddingBottom: insets.bottom,
+      paddingTop: safeAreaInsets.top + Spacing.three,
+      paddingLeft: safeAreaInsets.left + Spacing.three,
+      paddingRight: safeAreaInsets.right + Spacing.three,
+      paddingBottom: safeAreaInsets.bottom + BottomTabInset + Spacing.three,
+    },
+    ios: {
+      paddingTop: Spacing.three,
+      paddingBottom: BottomTabInset + Spacing.three,
     },
     web: {
-      paddingTop: Spacing.six,
+      paddingTop: Spacing.five,
       paddingBottom: Spacing.four,
     },
   });
 
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.centered}>
+        <ActivityIndicator color={theme.text} />
+      </ThemedView>
+    );
+  }
+
   return (
     <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
       style={[styles.scrollView, { backgroundColor: theme.background }]}
-      contentInset={insets}
       contentContainerStyle={[styles.contentContainer, contentPlatformStyle]}>
       <ThemedView style={styles.container}>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText type="subtitle">Explore</ThemedText>
-          <ThemedText style={styles.centerText} themeColor="textSecondary">
-            This starter app includes example{'\n'}code to help you get started.
+        <View style={styles.header}>
+          <ThemedText type="small" themeColor="textSecondary">
+            leet
           </ThemedText>
-
-          <ExternalLink href="https://docs.expo.dev" asChild>
-            <Pressable style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedView type="backgroundElement" style={styles.linkButton}>
-                <ThemedText type="link">Expo documentation</ThemedText>
-                <SymbolView
-                  tintColor={theme.text}
-                  name={{ ios: 'arrow.up.right.square', android: 'link', web: 'link' }}
-                  size={12}
-                />
-              </ThemedView>
-            </Pressable>
-          </ExternalLink>
-        </ThemedView>
-
-        <ThemedView style={styles.sectionsWrapper}>
-          <Collapsible title="File-based routing">
-            <ThemedText type="small">
-              This app has two screens: <ThemedText type="code">src/app/index.tsx</ThemedText> and{' '}
-              <ThemedText type="code">src/app/explore.tsx</ThemedText>
+          <ThemedText type="subtitle">Profile</ThemedText>
+          {me ? (
+            <ThemedText type="small" themeColor="textSecondary" selectable>
+              {me.email}
             </ThemedText>
-            <ThemedText type="small">
-              The layout file in <ThemedText type="code">src/app/_layout.tsx</ThemedText> sets up
-              the tab navigator.
+          ) : (
+            <ThemedText type="small" themeColor="textSecondary">
+              signed out
             </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/router/introduction">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
+          )}
+        </View>
 
-          <Collapsible title="Android, iOS, and web support">
-            <ThemedView type="backgroundElement" style={styles.collapsibleContent}>
-              <ThemedText type="small">
-                You can open this project on Android, iOS, and the web. To open the web version,
-                press <ThemedText type="smallBold">w</ThemedText> in the terminal running this
-                project.
+        {error ? (
+          <View style={styles.status}>
+            <ThemedText type="small" selectable style={styles.errorText}>
+              {error}
+            </ThemedText>
+          </View>
+        ) : null}
+
+        <View style={styles.moment}>
+          <ThemedText style={styles.momentTime}>13:37</ThemedText>
+          <ThemedText type="small" style={styles.momentText}>
+            daily leet
+          </ThemedText>
+        </View>
+
+        <View style={styles.grid}>
+          <Stat label="friends" value={relationships.friends.length} />
+          <Stat label="requests" value={relationships.incomingRequests.length} />
+          <Stat label="checks" value={images.length} />
+        </View>
+
+        <View style={[styles.panel, { backgroundColor: theme.backgroundElement }]}>
+          <ThemedText type="smallBold">Latest</ThemedText>
+          {images[0] ? (
+            <>
+              <ThemedText type="small" selectable>
+                {images[0].original_filename}
               </ThemedText>
-              <Image
-                source={require('@/assets/images/tutorial-web.png')}
-                style={styles.imageTutorial}
-              />
-            </ThemedView>
-          </Collapsible>
-
-          <Collapsible title="Images">
-            <ThemedText type="small">
-              For static images, you can use the <ThemedText type="code">@2x</ThemedText> and{' '}
-              <ThemedText type="code">@3x</ThemedText> suffixes to provide files for different
-              screen densities.
+              <ThemedText type="small" themeColor="textSecondary" selectable>
+                {images[0].created_at}
+              </ThemedText>
+            </>
+          ) : (
+            <ThemedText type="small" themeColor="textSecondary">
+              no check-ins
             </ThemedText>
-            <Image source={require('@/assets/images/react-logo.png')} style={styles.imageReact} />
-            <ExternalLink href="https://reactnative.dev/docs/images">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Light and dark mode components">
-            <ThemedText type="small">
-              This template has light and dark mode support. The{' '}
-              <ThemedText type="code">useColorScheme()</ThemedText> hook lets you inspect what the
-              user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-            </ThemedText>
-            <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-              <ThemedText type="linkPrimary">Learn more</ThemedText>
-            </ExternalLink>
-          </Collapsible>
-
-          <Collapsible title="Animations">
-            <ThemedText type="small">
-              This template includes an example of an animated component. The{' '}
-              <ThemedText type="code">src/components/ui/collapsible.tsx</ThemedText> component uses
-              the powerful <ThemedText type="code">react-native-reanimated</ThemedText> library to
-              animate opening this hint.
-            </ThemedText>
-          </Collapsible>
-        </ThemedView>
-        {Platform.OS === 'web' && <WebBadge />}
+          )}
+        </View>
       </ThemedView>
     </ScrollView>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  const theme = useTheme();
+
+  return (
+    <View style={[styles.stat, { backgroundColor: theme.backgroundElement }]}>
+      <ThemedText style={styles.statValue}>{value}</ThemedText>
+      <ThemedText type="small" themeColor="textSecondary">
+        {label}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -130,51 +177,69 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.three,
   },
   container: {
+    width: '100%',
     maxWidth: MaxContentWidth,
-    flexGrow: 1,
+    gap: Spacing.four,
   },
-  titleContainer: {
-    gap: Spacing.three,
+  centered: {
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.six,
+    justifyContent: 'center',
   },
-  centerText: {
-    textAlign: 'center',
+  header: {
+    gap: Spacing.one,
   },
-  pressed: {
-    opacity: 0.7,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
+  status: {
+    borderRadius: 8,
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
-    borderRadius: Spacing.five,
+    backgroundColor: 'rgba(179, 91, 62, 0.14)',
+  },
+  errorText: {
+    color: '#b35b3e',
+  },
+  moment: {
+    minHeight: 240,
+    borderRadius: 8,
+    backgroundColor: '#111111',
+    alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.one,
-    alignItems: 'center',
   },
-  sectionsWrapper: {
-    gap: Spacing.five,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
+  momentTime: {
+    color: '#f7f7f4',
+    fontSize: 72,
+    lineHeight: 76,
+    fontWeight: '700',
+    letterSpacing: 0,
   },
-  collapsibleContent: {
-    alignItems: 'center',
+  momentText: {
+    color: '#d8d8d1',
+    textTransform: 'uppercase',
   },
-  imageTutorial: {
-    width: '100%',
-    aspectRatio: 296 / 171,
-    borderRadius: Spacing.three,
-    marginTop: Spacing.two,
+  grid: {
+    flexDirection: 'row',
+    gap: Spacing.two,
   },
-  imageReact: {
-    width: 100,
-    height: 100,
-    alignSelf: 'center',
+  stat: {
+    flex: 1,
+    borderRadius: 8,
+    padding: Spacing.three,
+    gap: Spacing.one,
+  },
+  statValue: {
+    fontSize: 36,
+    lineHeight: 40,
+    fontWeight: '700',
+    letterSpacing: 0,
+  },
+  panel: {
+    borderRadius: 8,
+    padding: Spacing.three,
+    gap: Spacing.one,
   },
 });

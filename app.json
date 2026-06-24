@@ -12,7 +12,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#F4F4F1",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -29,6 +29,27 @@
     "plugins": [
       "expo-router",
       [
+        "expo-image-picker",
+        {
+          "cameraPermission": "leet uses your camera for your daily check-in.",
+          "microphonePermission": false,
+          "colors": {
+            "cropToolbarColor": "#111111",
+            "cropToolbarIconColor": "#ffffff",
+            "cropToolbarActionTextColor": "#ffffff",
+            "cropBackgroundColor": "#f3f1ec"
+          },
+          "dark": {
+            "colors": {
+              "cropToolbarColor": "#111111",
+              "cropToolbarIconColor": "#ffffff",
+              "cropToolbarActionTextColor": "#ffffff",
+              "cropBackgroundColor": "#111111"
+            }
+          }
+        }
+      ],
+      [
         "expo-notifications",
         {
           "defaultChannel": "daily-reminders"
@@ -37,7 +58,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#111111",
           "android": {
             "image": "./assets/images/splash-icon.png",
             "imageWidth": 76

@@ -57,6 +57,17 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS images_user_id_idx ON images(user_id);
+
+  CREATE TABLE IF NOT EXISTS user_follows (
+    follower_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    following_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (follower_user_id, following_user_id),
+    CHECK (follower_user_id != following_user_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS user_follows_following_user_id_idx
+    ON user_follows(following_user_id);
 `);
 
 function randomId() {
@@ -70,6 +81,10 @@ export function createUserForEmail(email) {
 
 export function findUserById(id) {
   return db.prepare('SELECT id, email, created_at FROM users WHERE id = ?').get(id);
+}
+
+export function findUserByEmail(email) {
+  return db.prepare('SELECT id, email, created_at FROM users WHERE email = ?').get(email);
 }
 
 export function createMagicLink(userId, tokenHash, expiresAt) {
@@ -116,6 +131,84 @@ export function findSessionByHash(tokenHash) {
 
 export function deleteSession(tokenHash) {
   return db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+}
+
+export function createFollow(followerUserId, followingUserId) {
+  return db
+    .prepare(
+      `
+        INSERT OR IGNORE INTO user_follows (follower_user_id, following_user_id)
+        VALUES (?, ?)
+      `
+    )
+    .run(followerUserId, followingUserId);
+}
+
+export function findFollow(followerUserId, followingUserId) {
+  return db
+    .prepare(
+      `
+        SELECT follower_user_id, following_user_id, created_at
+        FROM user_follows
+        WHERE follower_user_id = ? AND following_user_id = ?
+      `
+    )
+    .get(followerUserId, followingUserId);
+}
+
+export function listFriendRelationships(userId) {
+  const incomingRequests = db
+    .prepare(
+      `
+        SELECT users.id, users.email, user_follows.created_at AS requested_at
+        FROM user_follows
+        JOIN users ON users.id = user_follows.follower_user_id
+        LEFT JOIN user_follows reciprocal
+          ON reciprocal.follower_user_id = user_follows.following_user_id
+          AND reciprocal.following_user_id = user_follows.follower_user_id
+        WHERE user_follows.following_user_id = ?
+          AND reciprocal.follower_user_id IS NULL
+        ORDER BY user_follows.created_at DESC
+      `
+    )
+    .all(userId);
+
+  const outgoingRequests = db
+    .prepare(
+      `
+        SELECT users.id, users.email, user_follows.created_at AS requested_at
+        FROM user_follows
+        JOIN users ON users.id = user_follows.following_user_id
+        LEFT JOIN user_follows reciprocal
+          ON reciprocal.follower_user_id = user_follows.following_user_id
+          AND reciprocal.following_user_id = user_follows.follower_user_id
+        WHERE user_follows.follower_user_id = ?
+          AND reciprocal.follower_user_id IS NULL
+        ORDER BY user_follows.created_at DESC
+      `
+    )
+    .all(userId);
+
+  const friends = db
+    .prepare(
+      `
+        SELECT users.id, users.email, user_follows.created_at AS friends_since
+        FROM user_follows
+        JOIN user_follows reciprocal
+          ON reciprocal.follower_user_id = user_follows.following_user_id
+          AND reciprocal.following_user_id = user_follows.follower_user_id
+        JOIN users ON users.id = user_follows.following_user_id
+        WHERE user_follows.follower_user_id = ?
+        ORDER BY users.email
+      `
+    )
+    .all(userId);
+
+  return {
+    incomingRequests,
+    outgoingRequests,
+    friends,
+  };
 }
 
 export function createImageRecord({

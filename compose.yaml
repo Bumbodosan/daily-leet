@@ -4,9 +4,11 @@ services:
       context: ./backend
     environment:
       AUTH_COOKIE_SECURE: false
+      CORS_ORIGIN: http://localhost:8081,http://127.0.0.1:8081
       DATABASE_PATH: /data/app.sqlite
       HOST: 0.0.0.0
       IMAGE_UPLOAD_DIR: /data/uploads
+      MAGIC_LINK_REDIRECT_URL: http://localhost:8081
       NODE_ENV: development
       PORT: 3000
       PUBLIC_BACKEND_URL: http://localhost:8080
