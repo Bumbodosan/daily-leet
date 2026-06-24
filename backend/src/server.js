@@ -14,12 +14,20 @@ import {
   deleteEntry,
   findFollow,
   findUserByEmail,
+  getImageRecordForViewer,
+  getUserProfileForViewer,
   getEntry,
+  listFeedImagesForUser,
   listEntries,
   listFriendRelationships,
   upsertEntry,
 } from './db.js';
-import { getImageUploadLimits, listImagesForUser, storeUploadedImage } from './images.js';
+import {
+  createStoredImageReadStream,
+  getImageUploadLimits,
+  listImagesForUser,
+  storeUploadedImage,
+} from './images.js';
 
 const host = process.env.HOST ?? '0.0.0.0';
 const port = Number(process.env.PORT ?? 3000);
@@ -128,6 +136,24 @@ app.get('/friends', { preHandler: requireUser }, async (request) => {
   return listFriendRelationships(request.user.id);
 });
 
+app.get('/feed', { preHandler: requireUser }, async (request) => {
+  return {
+    images: listFeedImagesForUser(request.user.id),
+  };
+});
+
+app.get('/users/:userId', { preHandler: requireUser }, async (request, reply) => {
+  const profile = getUserProfileForViewer(request.params.userId, request.user.id);
+
+  if (!profile) {
+    return reply.code(404).send({
+      error: 'User not found',
+    });
+  }
+
+  return profile;
+});
+
 app.post('/friends/requests', { preHandler: requireUser }, async (request, reply) => {
   const email = request.body?.email;
 
@@ -181,6 +207,19 @@ app.get('/images', { preHandler: requireUser }, async (request) => {
   return {
     images: listImagesForUser(request.user.id),
   };
+});
+
+app.get('/images/:imageId/file', { preHandler: requireUser }, async (request, reply) => {
+  const image = getImageRecordForViewer(request.params.imageId, request.user.id);
+
+  if (!image) {
+    return reply.code(404).send({
+      error: 'Image not found',
+    });
+  }
+
+  reply.type(image.mime_type);
+  return reply.send(createStoredImageReadStream(image));
 });
 
 app.post('/images', { preHandler: requireUser }, async (request, reply) => {

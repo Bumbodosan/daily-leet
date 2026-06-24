@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { createWriteStream, mkdirSync, rmSync } from 'node:fs';
+import { createReadStream, createWriteStream, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -49,6 +49,10 @@ export function getImageUploadLimits() {
 
 export function listImagesForUser(userId) {
   return listImageRecordsForUser(userId);
+}
+
+export function createStoredImageReadStream(image) {
+  return createReadStream(image.storage_path);
 }
 
 export async function storeUploadedImage(userId, part) {

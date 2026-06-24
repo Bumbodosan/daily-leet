@@ -24,6 +24,7 @@ export type FriendRelationships = {
 export type ImageRecord = {
   id: string;
   user_id: string;
+  user_email?: string;
   original_filename: string;
   stored_filename: string;
   mime_type: string;
@@ -46,6 +47,10 @@ export class ApiError extends Error {
     super(message);
     this.name = 'ApiError';
   }
+}
+
+export function getImageFileUrl(imageId: string) {
+  return `${API_URL}/images/${imageId}/file`;
 }
 
 async function apiRequest<T>(path: string, options: ApiOptions = {}) {
@@ -90,6 +95,21 @@ export async function getMe() {
 
 export async function getFriendRelationships() {
   return apiRequest<FriendRelationships>('/friends');
+}
+
+export async function getFeedImages() {
+  return apiRequest<{ images: ImageRecord[] }>('/feed');
+}
+
+export async function getUserProfile(userId: string) {
+  return apiRequest<{
+    user: User;
+    stats: {
+      friendCount: number;
+      imageCount: number;
+    };
+    images: ImageRecord[];
+  }>(`/users/${userId}`);
 }
 
 export async function sendFriendRequest(email: string) {

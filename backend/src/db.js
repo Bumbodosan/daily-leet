@@ -156,6 +156,10 @@ export function findFollow(followerUserId, followingUserId) {
     .get(followerUserId, followingUserId);
 }
 
+export function areFriends(firstUserId, secondUserId) {
+  return Boolean(findFollow(firstUserId, secondUserId) && findFollow(secondUserId, firstUserId));
+}
+
 export function listFriendRelationships(userId) {
   const incomingRequests = db
     .prepare(
@@ -271,6 +275,107 @@ export function listImageRecordsForUser(userId) {
       `
     )
     .all(userId);
+}
+
+export function getImageRecordForViewer(imageId, viewerUserId) {
+  return db
+    .prepare(
+      `
+        SELECT
+          images.id,
+          images.user_id,
+          users.email AS user_email,
+          images.original_filename,
+          images.stored_filename,
+          images.mime_type,
+          images.byte_size,
+          images.storage_path,
+          images.created_at
+        FROM images
+        JOIN users ON users.id = images.user_id
+        LEFT JOIN user_follows viewer_to_owner
+          ON viewer_to_owner.follower_user_id = ?
+          AND viewer_to_owner.following_user_id = images.user_id
+        LEFT JOIN user_follows owner_to_viewer
+          ON owner_to_viewer.follower_user_id = images.user_id
+          AND owner_to_viewer.following_user_id = ?
+        WHERE images.id = ?
+          AND (
+            images.user_id = ?
+            OR (
+              viewer_to_owner.follower_user_id IS NOT NULL
+              AND owner_to_viewer.follower_user_id IS NOT NULL
+            )
+          )
+      `
+    )
+    .get(viewerUserId, viewerUserId, imageId, viewerUserId);
+}
+
+export function listFeedImagesForUser(userId) {
+  return db
+    .prepare(
+      `
+        SELECT
+          images.id,
+          images.user_id,
+          users.email AS user_email,
+          images.original_filename,
+          images.stored_filename,
+          images.mime_type,
+          images.byte_size,
+          images.created_at
+        FROM images
+        JOIN users ON users.id = images.user_id
+        WHERE images.user_id = ?
+          OR images.user_id IN (
+            SELECT outbound.following_user_id
+            FROM user_follows outbound
+            JOIN user_follows inbound
+              ON inbound.follower_user_id = outbound.following_user_id
+              AND inbound.following_user_id = outbound.follower_user_id
+            WHERE outbound.follower_user_id = ?
+          )
+        ORDER BY images.created_at DESC
+      `
+    )
+    .all(userId, userId);
+}
+
+export function getUserProfileForViewer(profileUserId, viewerUserId) {
+  const user = findUserById(profileUserId);
+  if (!user) {
+    return null;
+  }
+
+  if (profileUserId !== viewerUserId && !areFriends(profileUserId, viewerUserId)) {
+    return null;
+  }
+
+  const friendCount = db
+    .prepare(
+      `
+        SELECT COUNT(*) AS count
+        FROM user_follows outbound
+        JOIN user_follows inbound
+          ON inbound.follower_user_id = outbound.following_user_id
+          AND inbound.following_user_id = outbound.follower_user_id
+        WHERE outbound.follower_user_id = ?
+      `
+    )
+    .get(profileUserId).count;
+
+  const imageCount = db.prepare('SELECT COUNT(*) AS count FROM images WHERE user_id = ?').get(profileUserId).count;
+  const images = listImageRecordsForUser(profileUserId);
+
+  return {
+    user,
+    stats: {
+      friendCount,
+      imageCount,
+    },
+    images,
+  };
 }
 
 export function getEntry(key) {
