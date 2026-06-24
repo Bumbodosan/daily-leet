@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_PATH: /data/app.sqlite
+      HOST: 0.0.0.0
+      PORT: 3000
+    volumes:
+      - backend-data:/data
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./backend/Caddyfile:/etc/caddy/Caddyfile:ro
+
+volumes:
+  backend-data:

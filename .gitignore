@@ -3,6 +3,9 @@
 # dependencies
 node_modules/
 
+# local databases
+backend/data/
+
 # Expo
 .expo/
 dist/
