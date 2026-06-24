@@ -3,9 +3,12 @@ services:
     build:
       context: ./backend
     environment:
+      AUTH_COOKIE_SECURE: false
       DATABASE_PATH: /data/app.sqlite
       HOST: 0.0.0.0
+      NODE_ENV: development
       PORT: 3000
+      PUBLIC_BACKEND_URL: http://localhost:8080
     volumes:
       - backend-data:/data
     expose:
