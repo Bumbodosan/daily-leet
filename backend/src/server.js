@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import multipart from '@fastify/multipart';
 import {
   clearSession,
   consumeMagicLinkToken,
@@ -7,12 +8,18 @@ import {
   requireUser,
 } from './auth.js';
 import { db, deleteEntry, getEntry, listEntries, upsertEntry } from './db.js';
+import { getImageUploadLimits, listImagesForUser, storeUploadedImage } from './images.js';
 
 const host = process.env.HOST ?? '0.0.0.0';
 const port = Number(process.env.PORT ?? 3000);
 
 const app = Fastify({
   logger: true,
+});
+
+await app.register(multipart, {
+  limits: getImageUploadLimits(),
+  throwFileSizeLimit: false,
 });
 
 app.get('/health', async () => {
@@ -83,6 +90,33 @@ app.post('/auth/logout', async (request, reply) => {
   return {
     ok: true,
   };
+});
+
+app.get('/images', { preHandler: requireUser }, async (request) => {
+  return {
+    images: listImagesForUser(request.user.id),
+  };
+});
+
+app.post('/images', { preHandler: requireUser }, async (request, reply) => {
+  if (!request.isMultipart()) {
+    return reply.code(400).send({
+      error: 'Expected multipart form data with one image file',
+    });
+  }
+
+  const imagePart = await request.file();
+  const result = await storeUploadedImage(request.user.id, imagePart);
+
+  if (!result.ok) {
+    return reply.code(result.statusCode).send({
+      error: result.error,
+    });
+  }
+
+  return reply.code(201).send({
+    image: result.image,
+  });
 });
 
 app.get('/entries', { preHandler: requireUser }, async () => {

@@ -6,6 +6,7 @@ services:
       AUTH_COOKIE_SECURE: false
       DATABASE_PATH: /data/app.sqlite
       HOST: 0.0.0.0
+      IMAGE_UPLOAD_DIR: /data/uploads
       NODE_ENV: development
       PORT: 3000
       PUBLIC_BACKEND_URL: http://localhost:8080

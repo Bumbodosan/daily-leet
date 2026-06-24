@@ -44,6 +44,19 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS sessions_user_id_idx ON sessions(user_id);
+
+  CREATE TABLE IF NOT EXISTS images (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    original_filename TEXT NOT NULL,
+    stored_filename TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    byte_size INTEGER NOT NULL,
+    storage_path TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE INDEX IF NOT EXISTS images_user_id_idx ON images(user_id);
 `);
 
 function randomId() {
@@ -103,6 +116,68 @@ export function findSessionByHash(tokenHash) {
 
 export function deleteSession(tokenHash) {
   return db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+}
+
+export function createImageRecord({
+  id,
+  userId,
+  originalFilename,
+  storedFilename,
+  mimeType,
+  byteSize,
+  storagePath,
+}) {
+  db.prepare(
+    `
+      INSERT INTO images (
+        id,
+        user_id,
+        original_filename,
+        stored_filename,
+        mime_type,
+        byte_size,
+        storage_path
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `
+  ).run(id, userId, originalFilename, storedFilename, mimeType, byteSize, storagePath);
+
+  return db
+    .prepare(
+      `
+        SELECT
+          id,
+          user_id,
+          original_filename,
+          stored_filename,
+          mime_type,
+          byte_size,
+          created_at
+        FROM images
+        WHERE id = ?
+      `
+    )
+    .get(id);
+}
+
+export function listImageRecordsForUser(userId) {
+  return db
+    .prepare(
+      `
+        SELECT
+          id,
+          user_id,
+          original_filename,
+          stored_filename,
+          mime_type,
+          byte_size,
+          created_at
+        FROM images
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+      `
+    )
+    .all(userId);
 }
 
 export function getEntry(key) {
