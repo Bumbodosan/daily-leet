@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   ApiError,
@@ -8,6 +8,7 @@ import {
   getMe,
   getUserProfile,
   ImageRecord,
+  logout,
   requestMagicLink,
   User,
 } from '@/lib/api';
@@ -32,6 +33,7 @@ export default function ProfileScreen() {
   const [imageCount, setImageCount] = useState(0);
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -67,6 +69,26 @@ export default function ProfileScreen() {
     setMessage('Link sent. Open it, then come back.');
   }
 
+  async function handleLogout() {
+    setIsLoggingOut(true);
+    setError('');
+    setMessage('');
+
+    try {
+      await logout();
+    } catch (caughtError) {
+      setError(getErrorMessage(caughtError));
+      setIsLoggingOut(false);
+      return;
+    }
+
+    setUser(null);
+    setFriendCount(0);
+    setImageCount(0);
+    setImages([]);
+    setIsLoggingOut(false);
+  }
+
   if (isLoading) {
     return (
       <ThemedView style={styles.centered}>
@@ -92,6 +114,17 @@ export default function ProfileScreen() {
           <ThemedText type="smallBold" selectable>
             {user.email}
           </ThemedText>
+          <Pressable
+            disabled={isLoggingOut}
+            onPress={handleLogout}
+            style={({ pressed }) => [
+              styles.logoutButton,
+              { opacity: isLoggingOut ? 0.45 : pressed ? 0.72 : 1 },
+            ]}>
+            <ThemedText type="smallBold" style={styles.logoutText}>
+              {isLoggingOut ? 'logging out' : 'log out'}
+            </ThemedText>
+          </Pressable>
         </View>
 
         <View style={styles.stats}>
@@ -175,6 +208,17 @@ const styles = StyleSheet.create({
     lineHeight: 48,
     fontWeight: '700',
     letterSpacing: 0,
+  },
+  logoutButton: {
+    minHeight: 44,
+    borderRadius: 8,
+    paddingHorizontal: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#111111',
+  },
+  logoutText: {
+    color: '#f7f7f4',
   },
   stats: {
     flexDirection: 'row',

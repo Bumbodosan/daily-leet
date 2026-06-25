@@ -14,7 +14,7 @@ import { sendMagicLinkEmail } from './mailer.js';
 
 const SESSION_COOKIE_NAME = 'leet_session';
 const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_TTL_MS = 10 * 365 * 24 * 60 * 60 * 1000;
 
 function createToken() {
   return crypto.randomBytes(32).toString('base64url');
