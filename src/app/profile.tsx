@@ -14,6 +14,7 @@ import {
   User,
 } from '@/lib/api';
 import { AuthPanel } from '@/components/auth-panel';
+import { PhotoReactions } from '@/components/photo-reactions';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -141,7 +142,7 @@ export default function ProfileScreen() {
               no images yet
             </ThemedText>
           ) : (
-            images.map((image) => <ProfileImage key={image.id} image={image} />)
+            images.map((image) => <ProfileImage key={image.id} image={image} onError={setError} />)
           )}
         </View>
       </View>
@@ -162,13 +163,14 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ProfileImage({ image }: { image: ImageRecord }) {
+function ProfileImage({ image, onError }: { image: ImageRecord; onError: (message: string) => void }) {
   return (
     <View style={styles.imageCell}>
       <Image source={{ uri: getImageFileUrl(image.id) }} style={styles.image} contentFit="contain" />
       <ThemedText type="small" themeColor="textSecondary" selectable numberOfLines={1}>
         {image.created_at}
       </ThemedText>
+      <PhotoReactions imageId={image.id} reactions={image.reactions} onError={onError} />
     </View>
   );
 }

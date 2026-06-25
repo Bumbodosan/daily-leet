@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ApiError, getImageFileUrl, getUserProfile, ImageRecord, User } from '@/lib/api';
+import { PhotoReactions } from '@/components/photo-reactions';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
@@ -103,6 +104,7 @@ export default function FriendProfileScreen() {
                   <ThemedText type="small" themeColor="textSecondary" selectable>
                     {image.created_at}
                   </ThemedText>
+                  <PhotoReactions imageId={image.id} reactions={image.reactions} onError={setError} />
                 </View>
               ))}
             </View>

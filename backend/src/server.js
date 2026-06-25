@@ -12,14 +12,18 @@ import {
   createFollow,
   db,
   deleteEntry,
+  deleteImageReaction,
   findFollow,
   findUserByEmail,
+  getImageReactionSummary,
   getImageRecordForViewer,
   getUserProfileForViewer,
+  imageReactionEmojis,
   getEntry,
   listFeedImagesForUser,
   listEntries,
   listFriendRelationships,
+  setImageReaction,
   upsertEntry,
 } from './db.js';
 import {
@@ -239,8 +243,46 @@ app.post('/images', { preHandler: requireUser }, async (request, reply) => {
   }
 
   return reply.code(201).send({
-    image: result.image,
+    image: {
+      ...result.image,
+      reactions: getImageReactionSummary(result.image.id, request.user.id),
+    },
   });
+});
+
+app.post('/images/:imageId/reaction', { preHandler: requireUser }, async (request, reply) => {
+  const image = getImageRecordForViewer(request.params.imageId, request.user.id);
+
+  if (!image) {
+    return reply.code(404).send({
+      error: 'Image not found',
+    });
+  }
+
+  const emoji = request.body?.emoji;
+  if (typeof emoji !== 'string' || !imageReactionEmojis.includes(emoji)) {
+    return reply.code(400).send({
+      error: 'Expected JSON body with supported emoji field',
+    });
+  }
+
+  return {
+    reactions: setImageReaction(image.id, request.user.id, emoji),
+  };
+});
+
+app.delete('/images/:imageId/reaction', { preHandler: requireUser }, async (request, reply) => {
+  const image = getImageRecordForViewer(request.params.imageId, request.user.id);
+
+  if (!image) {
+    return reply.code(404).send({
+      error: 'Image not found',
+    });
+  }
+
+  return {
+    reactions: deleteImageReaction(image.id, request.user.id),
+  };
 });
 
 app.get('/entries', { preHandler: requireUser }, async () => {

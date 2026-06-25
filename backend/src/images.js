@@ -4,7 +4,7 @@ import path from 'node:path';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-import { createImageRecord, listImageRecordsForUser } from './db.js';
+import { createImageRecord, listImageRecordsForViewer } from './db.js';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const IMAGE_UPLOAD_DIR = process.env.IMAGE_UPLOAD_DIR ?? path.join(process.cwd(), 'data', 'uploads');
@@ -48,7 +48,7 @@ export function getImageUploadLimits() {
 }
 
 export function listImagesForUser(userId) {
-  return listImageRecordsForUser(userId);
+  return listImageRecordsForViewer(userId, userId);
 }
 
 export function createStoredImageReadStream(image) {

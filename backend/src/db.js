@@ -58,6 +58,18 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS images_user_id_idx ON images(user_id);
 
+  CREATE TABLE IF NOT EXISTS image_reactions (
+    image_id TEXT NOT NULL REFERENCES images(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    emoji TEXT NOT NULL CHECK (emoji IN ('👍', '👎', '😎', '💀', '💩', '😂')),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (image_id, user_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS image_reactions_image_id_idx
+    ON image_reactions(image_id);
+
   CREATE TABLE IF NOT EXISTS user_follows (
     follower_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     following_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -72,6 +84,43 @@ db.exec(`
 
 function randomId() {
   return crypto.randomUUID();
+}
+
+export const imageReactionEmojis = ['👍', '👎', '😎', '💀', '💩', '😂'];
+
+export function getImageReactionSummary(imageId, viewerUserId) {
+  const counts = db
+    .prepare(
+      `
+        SELECT emoji, COUNT(*) AS count
+        FROM image_reactions
+        WHERE image_id = ?
+        GROUP BY emoji
+      `
+    )
+    .all(imageId);
+
+  const viewerReaction = db
+    .prepare(
+      `
+        SELECT emoji
+        FROM image_reactions
+        WHERE image_id = ? AND user_id = ?
+      `
+    )
+    .get(imageId, viewerUserId);
+
+  return {
+    counts,
+    viewer_emoji: viewerReaction?.emoji ?? null,
+  };
+}
+
+function withImageReactions(image, viewerUserId) {
+  return {
+    ...image,
+    reactions: getImageReactionSummary(image.id, viewerUserId),
+  };
 }
 
 export function createUserForEmail(email) {
@@ -277,6 +326,10 @@ export function listImageRecordsForUser(userId) {
     .all(userId);
 }
 
+export function listImageRecordsForViewer(profileUserId, viewerUserId) {
+  return listImageRecordsForUser(profileUserId).map((image) => withImageReactions(image, viewerUserId));
+}
+
 export function getImageRecordForViewer(imageId, viewerUserId) {
   return db
     .prepare(
@@ -313,7 +366,7 @@ export function getImageRecordForViewer(imageId, viewerUserId) {
 }
 
 export function listFeedImagesForUser(userId) {
-  return db
+  const images = db
     .prepare(
       `
         SELECT
@@ -340,6 +393,28 @@ export function listFeedImagesForUser(userId) {
       `
     )
     .all(userId, userId);
+
+  return images.map((image) => withImageReactions(image, userId));
+}
+
+export function setImageReaction(imageId, userId, emoji) {
+  db.prepare(
+    `
+      INSERT INTO image_reactions (image_id, user_id, emoji)
+      VALUES (?, ?, ?)
+      ON CONFLICT(image_id, user_id) DO UPDATE SET
+        emoji = excluded.emoji,
+        updated_at = CURRENT_TIMESTAMP
+    `
+  ).run(imageId, userId, emoji);
+
+  return getImageReactionSummary(imageId, userId);
+}
+
+export function deleteImageReaction(imageId, userId) {
+  db.prepare('DELETE FROM image_reactions WHERE image_id = ? AND user_id = ?').run(imageId, userId);
+
+  return getImageReactionSummary(imageId, userId);
 }
 
 export function getUserProfileForViewer(profileUserId, viewerUserId) {
@@ -366,7 +441,7 @@ export function getUserProfileForViewer(profileUserId, viewerUserId) {
     .get(profileUserId).count;
 
   const imageCount = db.prepare('SELECT COUNT(*) AS count FROM images WHERE user_id = ?').get(profileUserId).count;
-  const images = listImageRecordsForUser(profileUserId);
+  const images = listImageRecordsForViewer(profileUserId, viewerUserId);
 
   return {
     user,

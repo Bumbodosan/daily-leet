@@ -21,6 +21,20 @@ export type FriendRelationships = {
   friends: FriendUser[];
 };
 
+export const reactionEmojis = ['👍', '👎', '😎', '💀', '💩', '😂'] as const;
+
+export type ReactionEmoji = (typeof reactionEmojis)[number];
+
+export type ImageReactionCount = {
+  emoji: ReactionEmoji;
+  count: number;
+};
+
+export type ImageReactionSummary = {
+  counts: ImageReactionCount[];
+  viewer_emoji: ReactionEmoji | null;
+};
+
 export type ImageRecord = {
   id: string;
   user_id: string;
@@ -30,6 +44,7 @@ export type ImageRecord = {
   mime_type: string;
   byte_size: number;
   created_at: string;
+  reactions: ImageReactionSummary;
 };
 
 export type UploadableImage = {
@@ -157,5 +172,18 @@ export async function uploadImage(image: UploadableImage) {
   return apiRequest<{ image: ImageRecord }>('/images', {
     method: 'POST',
     body: formData,
+  });
+}
+
+export async function setImageReaction(imageId: string, emoji: ReactionEmoji) {
+  return apiRequest<{ reactions: ImageReactionSummary }>(`/images/${imageId}/reaction`, {
+    method: 'POST',
+    json: { emoji },
+  });
+}
+
+export async function deleteImageReaction(imageId: string) {
+  return apiRequest<{ reactions: ImageReactionSummary }>(`/images/${imageId}/reaction`, {
+    method: 'DELETE',
   });
 }

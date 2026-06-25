@@ -19,6 +19,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { AuthPanel } from '@/components/auth-panel';
+import { PhotoReactions } from '@/components/photo-reactions';
 import { isLeetMinute } from '@/lib/leet-time';
 
 function getErrorMessage(error: unknown) {
@@ -191,6 +192,7 @@ export default function FeedScreen() {
                   {image.created_at}
                 </ThemedText>
               </View>
+              <PhotoReactions imageId={image.id} reactions={image.reactions} onError={setError} />
             </View>
           ))
         )}
