@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Link } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -65,9 +65,11 @@ export default function FeedScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -96,8 +98,7 @@ export default function FeedScreen() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [3, 4],
+        allowsEditing: false,
         mediaTypes: ['images'],
         quality: 0.88,
       });
@@ -176,7 +177,7 @@ export default function FeedScreen() {
               <Image
                 source={{ uri: getImageFileUrl(image.id) }}
                 style={styles.photo}
-                contentFit="cover"
+                contentFit="contain"
               />
               <View style={styles.postMeta}>
                 <Link href={`/users/${image.user_id}`} asChild>

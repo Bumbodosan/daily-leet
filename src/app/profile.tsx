@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
@@ -60,9 +61,11 @@ export default function ProfileScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   async function handleLogin(email: string) {
     await requestMagicLink(email);
@@ -162,7 +165,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 function ProfileImage({ image }: { image: ImageRecord }) {
   return (
     <View style={styles.imageCell}>
-      <Image source={{ uri: getImageFileUrl(image.id) }} style={styles.image} contentFit="cover" />
+      <Image source={{ uri: getImageFileUrl(image.id) }} style={styles.image} contentFit="contain" />
       <ThemedText type="small" themeColor="textSecondary" selectable numberOfLines={1}>
         {image.created_at}
       </ThemedText>

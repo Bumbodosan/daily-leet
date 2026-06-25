@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ApiError, getImageFileUrl, getUserProfile, ImageRecord, User } from '@/lib/api';
@@ -47,9 +47,11 @@ export default function FriendProfileScreen() {
     }
   }, [params.userId]);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   if (isLoading) {
     return (
@@ -96,7 +98,7 @@ export default function FriendProfileScreen() {
                   <Image
                     source={{ uri: getImageFileUrl(image.id) }}
                     style={styles.image}
-                    contentFit="cover"
+                    contentFit="contain"
                   />
                   <ThemedText type="small" themeColor="textSecondary" selectable>
                     {image.created_at}
