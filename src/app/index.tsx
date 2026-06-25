@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f4f1',
   },
   errorText: {
-    color: '#b35b3e',
+    color: '#9a3f28',
   },
   okText: {
     color: '#53745c',

@@ -146,9 +146,11 @@ export default function FriendsScreen() {
             />
           </View>
           {error || message ? (
-            <ThemedText type="small" selectable style={error ? styles.errorText : styles.okText}>
-              {error || message}
-            </ThemedText>
+            <View style={styles.status}>
+              <ThemedText type="small" selectable style={error ? styles.errorText : styles.okText}>
+                {error || message}
+              </ThemedText>
+            </View>
           ) : null}
         </View>
 
@@ -313,6 +315,12 @@ const styles = StyleSheet.create({
   section: {
     gap: Spacing.two,
   },
+  status: {
+    borderRadius: 8,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    backgroundColor: '#f4f4f1',
+  },
   personRow: {
     minHeight: 60,
     borderRadius: 8,
@@ -340,7 +348,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   errorText: {
-    color: '#b35b3e',
+    color: '#9a3f28',
   },
   okText: {
     color: '#53745c',
