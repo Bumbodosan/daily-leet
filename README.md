@@ -16,6 +16,14 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+   To force the 13:37 upload window open while testing image uploads:
+
+   ```bash
+   npm run start:test
+   ```
+
+   This sets `EXPO_PUBLIC_LEET_TEST_MODE=1`.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

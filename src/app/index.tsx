@@ -19,6 +19,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { AuthPanel } from '@/components/auth-panel';
+import { isLeetMinute } from '@/lib/leet-time';
 
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError || error instanceof Error) {
@@ -26,11 +27,6 @@ function getErrorMessage(error: unknown) {
   }
 
   return 'Request failed';
-}
-
-function isLeetMinute() {
-  const now = new Date();
-  return now.getHours() === 13 && now.getMinutes() === 37;
 }
 
 export default function FeedScreen() {
