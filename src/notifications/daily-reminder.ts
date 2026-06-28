@@ -6,6 +6,8 @@ const DAILY_REMINDER_CHANNEL_ID = 'daily-reminders';
 const DAILY_REMINDER_HOUR = 13;
 const DAILY_REMINDER_MINUTE = 37;
 
+export const DAILY_REMINDER_OPEN_CAMERA_ACTION = 'open-1337-camera';
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
@@ -59,6 +61,9 @@ export async function scheduleDailyReminderNotification() {
       title: 'Daily reminder',
       body: "It's 13:37.",
       sound: 'default',
+      data: {
+        action: DAILY_REMINDER_OPEN_CAMERA_ACTION,
+      },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,

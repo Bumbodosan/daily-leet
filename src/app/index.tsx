@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Link, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
@@ -39,6 +39,8 @@ export default function FeedScreen() {
   const [isWindowOpen, setIsWindowOpen] = useState(isLeetMinute());
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const { openCamera } = useLocalSearchParams<{ openCamera?: string }>();
+  const handledOpenCameraRequestRef = useRef<string | null>(null);
 
   const latestDate = useMemo(() => images[0]?.created_at.slice(0, 10), [images]);
   const latestImages = useMemo(
@@ -85,7 +87,7 @@ export default function FeedScreen() {
     setMessage('Link sent. Open it, then come back.');
   }
 
-  async function handleTakePhoto() {
+  const handleTakePhoto = useCallback(async () => {
     setIsUploading(true);
     setError('');
     setMessage('');
@@ -123,7 +125,20 @@ export default function FeedScreen() {
     } finally {
       setIsUploading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!openCamera || isLoading || !user || isUploading) {
+      return;
+    }
+
+    if (handledOpenCameraRequestRef.current === openCamera) {
+      return;
+    }
+
+    handledOpenCameraRequestRef.current = openCamera;
+    handleTakePhoto();
+  }, [handleTakePhoto, isLoading, isUploading, openCamera, user]);
 
   if (isLoading) {
     return (
