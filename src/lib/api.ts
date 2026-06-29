@@ -1,3 +1,6 @@
+import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
+
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 type ApiOptions = RequestInit & {
@@ -94,7 +97,17 @@ async function apiRequest<T>(path: string, options: ApiOptions = {}) {
 export async function requestMagicLink(email: string) {
   return apiRequest<{ ok: true }>('/auth/magic-link', {
     method: 'POST',
-    json: { email },
+    json: {
+      email,
+      ...(Platform.OS === 'web' ? {} : { redirectUrl: Linking.createURL('auth/callback') }),
+    },
+  });
+}
+
+export async function completeMagicLinkLogin(token: string) {
+  return apiRequest<{ user: User }>('/auth/session', {
+    method: 'POST',
+    json: { token },
   });
 }
 

@@ -10,7 +10,7 @@ import {
   getMagicLinkByHash,
   markMagicLinkUsed,
 } from './db.js';
-import { sendMagicLinkEmail } from './mailer.js';
+import { isAllowedMagicLinkRedirectUrl, sendMagicLinkEmail } from './mailer.js';
 
 const SESSION_COOKIE_NAME = 'leet_session';
 const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
@@ -74,11 +74,18 @@ export function getSessionToken(request) {
   return cookies[SESSION_COOKIE_NAME];
 }
 
-export async function requestMagicLink(email) {
+export async function requestMagicLink(email, redirectUrl) {
   if (!isEmail(email)) {
     return {
       ok: false,
       error: 'Expected JSON body with valid email field',
+    };
+  }
+
+  if (!isAllowedMagicLinkRedirectUrl(redirectUrl)) {
+    return {
+      ok: false,
+      error: 'Magic link redirect URL is not allowed',
     };
   }
 
@@ -88,7 +95,7 @@ export async function requestMagicLink(email) {
   const expiresAt = Date.now() + MAGIC_LINK_TTL_MS;
 
   createMagicLink(user.id, hashToken(token), expiresAt);
-  await sendMagicLinkEmail({ email: normalizedEmail, token, expiresAt });
+  await sendMagicLinkEmail({ email: normalizedEmail, token, expiresAt, redirectUrl });
 
   return {
     ok: true,
@@ -96,7 +103,7 @@ export async function requestMagicLink(email) {
 }
 
 export function consumeMagicLinkToken(token, reply) {
-  if (!token) {
+  if (typeof token !== 'string' || !token) {
     return {
       ok: false,
       statusCode: 400,

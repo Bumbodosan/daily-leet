@@ -75,7 +75,7 @@ app.get('/health', async () => {
 });
 
 app.post('/auth/magic-link', async (request, reply) => {
-  const result = await requestMagicLink(request.body?.email);
+  const result = await requestMagicLink(request.body?.email, request.body?.redirectUrl);
 
   if (!result.ok) {
     return reply.code(400).send({
@@ -85,6 +85,20 @@ app.post('/auth/magic-link', async (request, reply) => {
 
   return {
     ok: true,
+  };
+});
+
+app.post('/auth/session', async (request, reply) => {
+  const result = consumeMagicLinkToken(request.body?.token, reply);
+
+  if (!result.ok) {
+    return reply.code(result.statusCode).send({
+      error: result.error,
+    });
+  }
+
+  return {
+    user: result.user,
   };
 });
 

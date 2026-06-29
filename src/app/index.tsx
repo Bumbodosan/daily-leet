@@ -4,23 +4,14 @@ import { Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import {
-  ApiError,
-  getFeedImages,
-  getImageFileUrl,
-  getMe,
-  ImageRecord,
-  requestMagicLink,
-  uploadImage,
-  User,
-} from '@/lib/api';
+import { ApiError, getFeedImages, getImageFileUrl, ImageRecord, uploadImage } from '@/lib/api';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { AuthPanel } from '@/components/auth-panel';
 import { PhotoReactions } from '@/components/photo-reactions';
 import { isLeetMinute } from '@/lib/leet-time';
+import { useAuthSession } from '@/lib/auth-session';
 
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError || error instanceof Error) {
@@ -32,14 +23,18 @@ function getErrorMessage(error: unknown) {
 
 export default function FeedScreen() {
   const theme = useTheme();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, clearAuth } = useAuthSession();
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isWindowOpen, setIsWindowOpen] = useState(isLeetMinute());
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const { openCamera } = useLocalSearchParams<{ openCamera?: string }>();
+  const { auth, authError, openCamera } = useLocalSearchParams<{
+    auth?: string;
+    authError?: string;
+    openCamera?: string;
+  }>();
   const handledOpenCameraRequestRef = useRef<string | null>(null);
 
   const latestDate = useMemo(() => images[0]?.created_at.slice(0, 10), [images]);
@@ -52,12 +47,11 @@ export default function FeedScreen() {
     setError('');
 
     try {
-      const [{ user: currentUser }, feed] = await Promise.all([getMe(), getFeedImages()]);
-      setUser(currentUser);
+      const feed = await getFeedImages();
       setImages(feed.images);
     } catch (caughtError) {
       if (caughtError instanceof ApiError && caughtError.status === 401) {
-        setUser(null);
+        clearAuth();
         setImages([]);
         return;
       }
@@ -66,12 +60,13 @@ export default function FeedScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [clearAuth]);
 
   useFocusEffect(
     useCallback(() => {
+      void auth;
       refresh();
-    }, [refresh])
+    }, [auth, refresh])
   );
 
   useEffect(() => {
@@ -81,11 +76,6 @@ export default function FeedScreen() {
 
     return () => clearInterval(interval);
   }, []);
-
-  async function handleLogin(email: string) {
-    await requestMagicLink(email);
-    setMessage('Link sent. Open it, then come back.');
-  }
 
   const handleTakePhoto = useCallback(async () => {
     setIsUploading(true);
@@ -140,16 +130,14 @@ export default function FeedScreen() {
     handleTakePhoto();
   }, [handleTakePhoto, isLoading, isUploading, openCamera, user]);
 
+  const displayError = authError ?? error;
+
   if (isLoading) {
     return (
       <ThemedView style={styles.centered}>
         <ActivityIndicator color={theme.text} />
       </ThemedView>
     );
-  }
-
-  if (!user) {
-    return <AuthPanel error={error} message={message} onSubmit={handleLogin} onRefresh={refresh} />;
   }
 
   return (
@@ -172,10 +160,10 @@ export default function FeedScreen() {
           </Pressable>
         ) : null}
 
-        {error || message ? (
+        {displayError || message ? (
           <View style={styles.status}>
-            <ThemedText type="small" selectable style={error ? styles.errorText : styles.okText}>
-              {error || message}
+            <ThemedText type="small" selectable style={displayError ? styles.errorText : styles.okText}>
+              {displayError || message}
             </ThemedText>
           </View>
         ) : null}

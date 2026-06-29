@@ -6,19 +6,15 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import {
   ApiError,
   getImageFileUrl,
-  getMe,
   getUserProfile,
   ImageRecord,
-  logout,
-  requestMagicLink,
-  User,
 } from '@/lib/api';
-import { AuthPanel } from '@/components/auth-panel';
 import { PhotoReactions } from '@/components/photo-reactions';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuthSession } from '@/lib/auth-session';
 
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError || error instanceof Error) {
@@ -30,28 +26,30 @@ function getErrorMessage(error: unknown) {
 
 export default function ProfileScreen() {
   const theme = useTheme();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, clearAuth, signOut } = useAuthSession();
   const [friendCount, setFriendCount] = useState(0);
   const [imageCount, setImageCount] = useState(0);
   const [images, setImages] = useState<ImageRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
     setError('');
 
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { user: currentUser } = await getMe();
-      const profile = await getUserProfile(currentUser.id);
-      setUser(profile.user);
+      const profile = await getUserProfile(user.id);
       setFriendCount(profile.stats.friendCount);
       setImageCount(profile.stats.imageCount);
       setImages(profile.images);
     } catch (caughtError) {
       if (caughtError instanceof ApiError && caughtError.status === 401) {
-        setUser(null);
+        clearAuth();
         setImages([]);
         return;
       }
@@ -60,7 +58,7 @@ export default function ProfileScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [clearAuth, user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,25 +66,18 @@ export default function ProfileScreen() {
     }, [refresh])
   );
 
-  async function handleLogin(email: string) {
-    await requestMagicLink(email);
-    setMessage('Link sent. Open it, then come back.');
-  }
-
   async function handleLogout() {
     setIsLoggingOut(true);
     setError('');
-    setMessage('');
 
     try {
-      await logout();
+      await signOut();
     } catch (caughtError) {
       setError(getErrorMessage(caughtError));
       setIsLoggingOut(false);
       return;
     }
 
-    setUser(null);
     setFriendCount(0);
     setImageCount(0);
     setImages([]);
@@ -102,7 +93,7 @@ export default function ProfileScreen() {
   }
 
   if (!user) {
-    return <AuthPanel error={error} message={message} onSubmit={handleLogin} onRefresh={refresh} />;
+    return null;
   }
 
   return (
@@ -111,6 +102,15 @@ export default function ProfileScreen() {
       style={[styles.scrollView, { backgroundColor: theme.background }]}
       contentContainerStyle={styles.contentContainer}>
       <View style={styles.container}>
+        {error ? (
+          <ThemedText
+            type="small"
+            selectable
+            style={{ color: theme.background === '#000000' ? '#ffb199' : '#9a3f28' }}>
+            {error}
+          </ThemedText>
+        ) : null}
+
         <View style={styles.identity}>
           <View style={styles.avatar}>
             <ThemedText style={styles.avatarText}>{user.email.slice(0, 1).toUpperCase()}</ThemedText>

@@ -66,7 +66,7 @@ export function AuthPanel({
           </Pressable>
           <Pressable onPress={onRefresh}>
             <ThemedText type="small" style={styles.refreshText}>
-              refresh session
+              I opened the link
             </ThemedText>
           </Pressable>
           {error || message ? (

@@ -7,16 +7,14 @@ import {
   ApiError,
   FriendRelationships,
   getFriendRelationships,
-  getMe,
-  requestMagicLink,
   sendFriendRequest,
   User,
 } from '@/lib/api';
-import { AuthPanel } from '@/components/auth-panel';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuthSession } from '@/lib/auth-session';
 
 const emptyRelationships: FriendRelationships = {
   incomingRequests: [],
@@ -34,7 +32,7 @@ function getErrorMessage(error: unknown) {
 
 export default function FriendsScreen() {
   const theme = useTheme();
-  const [user, setUser] = useState<User | null>(null);
+  const { clearAuth } = useAuthSession();
   const [relationships, setRelationships] = useState(emptyRelationships);
   const [friendEmail, setFriendEmail] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -47,15 +45,11 @@ export default function FriendsScreen() {
     setError('');
 
     try {
-      const [{ user: currentUser }, friendRelationships] = await Promise.all([
-        getMe(),
-        getFriendRelationships(),
-      ]);
-      setUser(currentUser);
+      const friendRelationships = await getFriendRelationships();
       setRelationships(friendRelationships);
     } catch (caughtError) {
       if (caughtError instanceof ApiError && caughtError.status === 401) {
-        setUser(null);
+        clearAuth();
         setRelationships(emptyRelationships);
         return;
       }
@@ -64,18 +58,13 @@ export default function FriendsScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [clearAuth]);
 
   useFocusEffect(
     useCallback(() => {
       refresh();
     }, [refresh])
   );
-
-  async function handleLogin(email: string) {
-    await requestMagicLink(email);
-    setMessage('Link sent. Open it, then come back.');
-  }
 
   async function handleAddFriend() {
     setIsSending(true);
@@ -116,10 +105,6 @@ export default function FriendsScreen() {
         <ActivityIndicator color={theme.text} />
       </ThemedView>
     );
-  }
-
-  if (!user) {
-    return <AuthPanel error={error} message={message} onSubmit={handleLogin} onRefresh={refresh} />;
   }
 
   return (
